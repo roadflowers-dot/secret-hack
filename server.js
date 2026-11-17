@@ -189,6 +189,16 @@ app.get('/api/me', requireAuthApi, (req, res) => {
   res.json({ ...req.user, admin: isAdmin(req.user.email), csrf: req.session.csrf, ip: req.ip });
 });
 
+// ───────────────────────── Lab progress ─────────────────────────
+app.post('/api/progress', requireAuthApi, csrfProtect, (req, res) => {
+  const mod = String(req.body.module || '');
+  if (!/^[a-z]-[a-z0-9-]{1,40}$/.test(mod)) return res.status(400).json({ error: 'bad module' });
+  const level = [1, 2, 3].includes(req.body.level) ? req.body.level : 0;
+  const score = Number.isFinite(req.body.score) ? Math.round(req.body.score) : null;
+  store.logEvent('lab.complete', { ip: req.ip, email: req.user.email, detail: `L${level} ${mod}${score != null ? ' score=' + score : ''}` });
+  res.json({ ok: true });
+});
+
 // ───────────────────────── Admin ─────────────────────────
 const admin = express.Router();
 admin.use(requireAdminApi, csrfProtect);

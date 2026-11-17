@@ -162,3 +162,30 @@ tr:hover td { background: rgba(0,255,65,.04); }
   .content section.active { animation: none; }
   #rain { opacity: .25; }
 }
+
+/* ── lab modules ── */
+.lv { display: inline-block; font-size: 12px; padding: 1px 9px; border-radius: 10px; border: 1px solid currentColor; letter-spacing: .08em; }
+.lv1 { color: var(--g); } .lv2 { color: var(--amber); } .lv3 { color: var(--red); }
+.levels button { padding: 6px 16px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.modcard {
+  text-align: left; display: block; width: 100%; padding: 14px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
+}
+.modcard:hover { border-color: var(--g); }
+.modcard.done { border-color: var(--line-2); }
+.mc-top { display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+.mc-top .ok { color: var(--cyan); }
+.mc-title { font-size: 17px; margin: 8px 0 4px; color: var(--g); text-shadow: 0 0 6px rgba(0,255,65,.4); }
+.mc-sum { font-size: 13px; color: #9fd8a9; }
+.banner { border: 1px solid var(--cyan); color: var(--cyan); background: rgba(77,255,243,.07); padding: 10px 14px; border-radius: 4px; margin: 10px 0; box-shadow: 0 0 14px rgba(77,255,243,.25); }
+.termlog { max-height: 300px; overflow-y: auto; }
+.termlog .ok { color: var(--g); } .termlog .red { color: var(--red); } .termlog .cyan { color: var(--cyan); }
+.phone { border: 1px solid var(--line-2); border-radius: 14px; padding: 12px 14px; background: #021002; max-width: 520px; margin-top: 8px; }
+.phone .link { color: var(--cyan); text-decoration: underline; word-break: break-all; margin-top: 6px; }
+.pick { display: inline-flex; gap: 8px; align-items: center; color: #b9f5c4; font-size: 14px; margin: 4px 10px 4px 0; cursor: pointer; }
+.pick input { width: auto; }
+input[type="range"] { padding: 0; accent-color: var(--g); }
+.codepick { text-align: left; width: 100%; }
+.codepick pre { white-space: pre-wrap; }
+.codepick.right { border-color: var(--g); box-shadow: 0 0 12px rgba(0,255,65,.35); }
+.codepick.wrong { border-color: #7a1d1d; opacity: .7; }
