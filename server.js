@@ -7,7 +7,6 @@ const cookieSession = require('cookie-session');
 const { OAuth2Client } = require('google-auth-library');
 const store = require('./lib/store');
 const { createLimiter } = require('./lib/ratelimit');
-const labs = require('./lib/labs');
 
 // ───────────────────────── Config ─────────────────────────
 const PORT = Number(process.env.PORT) || 3000;
@@ -189,9 +188,6 @@ app.post('/auth/logout', csrfProtect, (req, res) => {
 app.get('/api/me', requireAuthApi, (req, res) => {
   res.json({ ...req.user, admin: isAdmin(req.user.email), csrf: req.session.csrf, ip: req.ip });
 });
-
-// ───────────────────────── Labs ─────────────────────────
-app.use('/api/labs', requireAuthApi, csrfProtect, labs);
 
 // ───────────────────────── Admin ─────────────────────────
 const admin = express.Router();

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SECRET//HACK — 관리자</title>
+<link rel="stylesheet" href="/css/matrix.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="logo glow">SECRET//HACK <span class="red">ADMIN</span></div>
+    <div class="sp"></div>
+    <a class="btn small" href="/lab">LAB</a>
+    <div class="who" id="who"></div>
+    <button class="small" id="logout">logout</button>
+  </header>
+
+  <div class="wrap admin" style="max-width:1280px;margin:0 auto;padding:20px">
+    <div class="stats">
+      <div class="stat"><b id="s-visitors">-</b><span>방문 IP</span></div>
+      <div class="stat"><b id="s-active">-</b><span>24시간 활성</span></div>
+      <div class="stat"><b id="s-users">-</b><span>로그인 계정</span></div>
+      <div class="stat"><b id="s-blocked" class="red">-</b><span>차단 IP</span></div>
+    </div>
+
+    <div class="panel">
+      <div class="row" style="align-items:center">
+        <h2 style="margin:0">CONTROL ROOM</h2>
+        <div class="muted" style="font-size:13px;text-align:right">내 IP: <span id="myip" class="cyan">-</span> · <span id="updated">-</span></div>
+      </div>
+
+      <form id="blockform" style="margin-top:10px">
+        <div class="row">
+          <div><label for="bip">차단할 IP</label><input id="bip" placeholder="203.0.113.7" autocomplete="off" required></div>
+          <div><label for="breason">사유</label><input id="breason" placeholder="무차별 대입 시도" maxlength="200" autocomplete="off"></div>
+          <button type="submit" class="danger">BLOCK</button>
+        </div>
+      </form>
+      <div class="err" id="msg" role="status"></div>
+
+      <div class="tabs" role="tablist">
+        <button role="tab" aria-selected="true" data-tab="visitors">방문자</button>
+        <button role="tab" aria-selected="false" data-tab="blocked">차단 목록</button>
+        <button role="tab" aria-selected="false" data-tab="events">보안 로그</button>
+        <span class="sp" style="flex:1"></span>
+        <input id="filter" placeholder="IP / 이메일 검색" style="max-width:240px" autocomplete="off">
+        <label style="display:flex;gap:6px;align-items:center;margin:0"><input type="checkbox" id="auto" checked style="width:auto"> 자동 새로고침</label>
+      </div>
+
+      <div class="tbl" data-pane="visitors">
+        <table><thead><tr><th>IP</th><th>계정</th><th>요청 수</th><th>최근 접속</th><th>처음 접속</th><th>마지막 경로</th><th>User-Agent</th><th></th></tr></thead><tbody id="tv"></tbody></table>
+      </div>
+      <div class="tbl" data-pane="blocked" hidden>
+        <table><thead><tr><th>IP</th><th>사유</th><th>차단자</th><th>차단 시각</th><th></th></tr></thead><tbody id="tb"></tbody></table>
+      </div>
+      <div class="tbl" data-pane="events" hidden>
+        <table><thead><tr><th>시각</th><th>종류</th><th>IP</th><th>계정</th><th>내용</th></tr></thead><tbody id="te"></tbody></table>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="/js/matrix.js"></script>
+<script src="/js/admin.js"></script>
+</body>
+</html>

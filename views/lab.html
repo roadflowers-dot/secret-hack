@@ -11,92 +11,32 @@
   <header class="top">
     <div class="logo glow">SECRET//HACK</div>
     <div class="sp"></div>
-    <a class="btn" id="adminlink" href="/admin" hidden>ADMIN</a>
+    <a class="btn small" id="adminlink" href="/admin" hidden>ADMIN</a>
     <div class="who" id="who"></div>
     <button class="small" id="logout">logout</button>
   </header>
 
-  <div class="lab">
-    <nav class="panel nav" id="nav" aria-label="실습 목록">
-      <a href="#intro" data-lab="intro"><span class="num">00</span>브리핑</a>
-      <a href="#sqli" data-lab="sqli"><span class="num">01</span>SQL Injection</a>
-      <a href="#xss" data-lab="xss"><span class="num">02</span>XSS</a>
-      <a href="#brute" data-lab="brute"><span class="num">03</span>Brute Force</a>
-      <a href="#csrf" data-lab="csrf"><span class="num">04</span>CSRF</a>
-      <a href="#traversal" data-lab="traversal"><span class="num">05</span>Path Traversal</a>
-      <a href="#password" data-lab="password"><span class="num">06</span>비밀번호 해싱</a>
-      <a href="#headers" data-lab="headers"><span class="num">07</span>보안 헤더</a>
-      <a href="#phish" data-lab="phish"><span class="num">08</span>피싱 URL 분석</a>
-    </nav>
-
-    <main class="content">
-
-<!-- ═════════════ 00 INTRO ═════════════ -->
-<section id="intro" class="panel">
-  <h1 class="glow">브리핑</h1>
-  <div class="out" id="introterm" style="border-style:solid"></div>
-  <h3>이 사이트는</h3>
-  <p>웹 해킹 기법이 <b>어떻게 동작하는지</b> 직접 눌러 보고, <b>어떻게 막는지</b>를 같은 화면에서 비교하는 훈련장입니다. 각 실습에는 두 가지 모드가 있습니다.</p>
-  <div class="two">
-    <div class="card atk"><h4>● VULNERABLE 모드</h4><p>흔히 보는 취약한 코드. 공격이 성공하는 모습을 볼 수 있습니다.</p></div>
-    <div class="card def"><h4>● SECURE 모드</h4><p>올바른 방어 코드. 같은 공격이 막히는 것을 확인합니다.</p></div>
+  <div style="max-width:900px;margin:0 auto;padding:20px 16px">
+    <section class="panel">
+      <h1 class="glow">브리핑</h1>
+      <div class="out" id="introterm" style="border-style:solid"></div>
+      <h3>이 사이트는</h3>
+      <p>웹 공격이 어떤 원리로 일어나는지 이해하고, 올바른 방어 코드를 비교·확인하는 보안 훈련장입니다.</p>
+      <h3>이 사이트에 적용된 방어</h3>
+      <ul>
+        <li>Google 계정 로그인 필수 (ID 토큰 서버 검증)</li>
+        <li>세션 쿠키: <code>HttpOnly</code>, <code>SameSite=Lax</code>, 서명됨</li>
+        <li>상태 변경 요청마다 CSRF 토큰 검사</li>
+        <li>CSP, X-Frame-Options 등 보안 헤더</li>
+        <li>IP별 요청 횟수 제한, 관리자 IP 차단</li>
+      </ul>
+      <h3>실습 모듈</h3>
+      <p class="muted">준비 중입니다.</p>
+      <p class="amber">허가받지 않은 시스템을 공격하는 것은 불법입니다 (정보통신망법 제48조 등). 접속 IP와 계정은 보안 로그에 기록됩니다.</p>
+    </section>
   </div>
-  <h3>안전 장치</h3>
-  <ul>
-    <li>SQL 실습은 요청마다 새로 만드는 <b>메모리 DB(읽기 전용)</b>에서 실행됩니다.</li>
-    <li>XSS 결과는 <code>sandbox</code> iframe + CSP <code>sandbox</code> 로 격리되어 이 사이트의 쿠키·세션에 접근할 수 없습니다.</li>
-    <li>경로 탐색 실습은 <b>가짜 파일 시스템</b>입니다. 실제 서버 파일은 읽지 않습니다.</li>
-    <li>비밀번호 실습은 <b>브라우저 안에서만</b> 계산하며 서버로 전송하지 않습니다.</li>
-  </ul>
-  <h3>규칙</h3>
-  <p class="amber">여기서 배운 기법을 허가받지 않은 시스템에 사용하는 것은 불법입니다 (정보통신망법 제48조 등). 실습은 이 사이트 안에서만 하세요. 모든 실습 기록은 보안 로그에 남습니다.</p>
-</section>
-
-<!-- ═════════════ 01 SQLi ═════════════ -->
-<section id="sqli" class="panel">
-  <h1 class="glow">01 // SQL Injection</h1>
-  <div class="risk">OWASP Top 10 — A03: Injection · 위험도: 치명적</div>
-  <div class="two" style="margin-top:12px">
-    <div class="card atk"><h4>공격 원리</h4><p>사용자 입력을 SQL 문자열에 그대로 이어 붙이면, 입력값이 <b>데이터가 아니라 코드</b>로 해석됩니다. <code>' OR '1'='1</code> 한 줄로 비밀번호 검사를 통째로 건너뛰거나, <code>UNION SELECT</code> 로 다른 테이블을 읽을 수 있습니다.</p></div>
-    <div class="card def"><h4>방어 방법</h4><ul><li><b>Prepared Statement(파라미터 바인딩)</b> — 입력은 항상 데이터로 취급</li><li>ORM / 쿼리 빌더 사용</li><li>DB 계정 최소 권한, 에러 메시지 숨기기</li><li>입력 길이·형식 검증 (보조 수단)</li></ul></div>
-  </div>
-<pre><span class="cm">// ✗ 취약</span>
-<span class="bad">db.query("SELECT * FROM users WHERE username = '" + u + "' AND password = '" + p + "'")</span>
-<span class="cm">// ✓ 안전</span>
-<span class="good">db.prepare("SELECT * FROM users WHERE username = ? AND password = ?").all(u, p)</span></pre>
-  <h3>실행 테스트</h3>
-  <div class="mode" data-mode-for="sqli"><button class="v" aria-pressed="true" data-mode="vulnerable">VULNERABLE</button><button class="s" aria-pressed="false" data-mode="secure">SECURE</button></div>
-  <div class="chips" id="sqlichips">
-    <span class="muted" style="font-size:12px">페이로드:</span>
-    <button data-u="admin' OR '1'='1' --" data-p="x">인증 우회</button>
-    <button data-u="morpheus' --" data-p="">특정 계정 탈취</button>
-    <button data-u="x' UNION SELECT id, note, 'leak' FROM secrets --" data-p="">UNION 데이터 유출</button>
-    <button data-u="x' UNION SELECT id, password, role FROM users --" data-p="">비밀번호 덤프</button>
-    <button data-u="'" data-p="">에러 유발</button>
-  </div>
-  <form id="sqliform">
-    <div class="row">
-      <div><label for="sqliu">username</label><input id="sqliu" value="neo" autocomplete="off"></div>
-      <div><label for="sqlip">password</label><input id="sqlip" value="wrong" autocomplete="off"></div>
-      <button type="submit">LOGIN ▶</button>
-    </div>
-  </form>
-  <div class="out" id="sqliout">정상 계정: neo / redpill — 페이로드를 눌러 공격해 보세요.</div>
-</section>
-
-<!-- ═════════════ 02 XSS ═════════════ -->
-<section id="xss" class="panel">
-  <h1 class="glow">02 // Cross-Site Scripting (XSS)</h1>
-  <div class="risk">OWASP Top 10 — A03: Injection · 위험도: 높음</div>
-  <div class="two" style="margin-top:12px">
-    <div class="card atk"><h4>공격 원리</h4><p>게시판·댓글 등에 입력한 HTML이 그대로 페이지에 삽입되면, 공격자의 <b>자바스크립트가 다른 사용자의 브라우저에서 실행</b>됩니다. 세션 쿠키 탈취, 키 입력 가로채기, 가짜 로그인 창 띄우기가 가능합니다.</p></div>
-    <div class="card def"><h4>방어 방법</h4><ul><li>출력 시 <b>HTML 이스케이프</b> (<code>&lt;</code> → <code>&amp;lt;</code>)</li><li><code>innerHTML</code> 대신 <code>textContent</code></li><li>리치 텍스트는 DOMPurify 같은 sanitizer</li><li><b>CSP</b>로 인라인 스크립트 금지, 쿠키에 <code>HttpOnly</code></li></ul></div>
-  </div>
-<pre><span class="cm">// ✗ 취약</span>
-<span class="bad">el.innerHTML = comment;</span>
-<span class="cm">// ✓ 안전</span>
-<span class="good">el.textContent = comment;</span>     <span class="cm">// 또는 escapeHtml(comment) + CSP: script-src 'self'</span></pre>
-  <h3>실행 테스트 — 방명록</h3>
-  <div class="mode" data-mode-for="xss"><button class="v" aria-pressed="true" data-mode="vulnerable">VULNERABLE</button><button class="s" aria-pressed="false" data-mode="secure">SECURE</button></div>
-  <div class="chips" id="xsschips">
-    <span class="muted" style="font-size:12px">페이로
+</div>
+<script src="/js/matrix.js"></script>
+<script src="/js/lab.js"></script>
+</body>
+</html>
