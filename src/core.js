@@ -175,9 +175,26 @@ function watchBlocks(user, ip) {
       location.reload();
     }
   };
-  const watch = (ref, key) => onSnapshot(ref, (snap) => { state[key] = snap.exists(); apply(); }, () => { /* ignore */ });
-  watch(doc(db, 'blocked', user.uid), 'acct');
-  if (ip !== 'unknown') watch(doc(db, 'blockedIps', ip), 'ip');
+  const refs = [[doc(db, 'blocked', user.uid), 'acct']];
+  if (ip !== 'unknown') refs.push([doc(db, 'blockedIps', ip), 'ip']);
+  // Fallback: re-check on focus and every 30s, in case a realtime listener can't connect.
+  let polling = false;
+  const recheck = async () => {
+    for (const [ref, key] of refs) {
+      try { state[key] = (await getDoc(ref)).exists(); } catch { /* ignore */ }
+    }
+    apply();
+  };
+  const startPolling = () => {
+    if (polling) return;
+    polling = true;
+    setInterval(() => { if (!document.hidden) recheck(); }, 30_000);
+  };
+  for (const [ref, key] of refs) {
+    onSnapshot(ref, (snap) => { state[key] = snap.exists(); apply(); }, (e) => { console.warn('block watch failed:', e.code || e.message); startPolling(); });
+  }
+  window.addEventListener('focus', recheck);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) recheck(); });
 }
 
 export function fillWho(user) {
