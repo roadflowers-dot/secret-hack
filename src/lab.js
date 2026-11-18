@@ -1,4 +1,4 @@
-import { guard, fillWho, logEvent } from './core.js';
+import { guard, fillWho, logEvent, logActivity } from './core.js';
 
 const ctx = await guard();
 if (ctx) {
@@ -6,6 +6,7 @@ if (ctx) {
   fillWho(user);
   if (admin) document.getElementById('adminlink').hidden = false;
   LAB.onComplete = (mod, score) => logEvent(user, ip, 'lab.complete', `L${mod.level} ${mod.id}${score != null ? ' score=' + score : ''}`, { key: 'lab_' + mod.id });
+  LAB.onOpen = (mod) => logActivity(user, 'lab.open', `${mod.id} · ${mod.title}`);
   LAB.start();
   MX.type(document.getElementById('introterm'), [
     `> operator: ${user.email}`,

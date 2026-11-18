@@ -82,6 +82,7 @@ window.LAB = (function () {
     const body = document.getElementById('modbody');
     body.innerHTML = '';
     m.render(body, { complete: (score) => complete(m, score), term, sleep, h, esc });
+    if (typeof api.onOpen === 'function') api.onOpen(m);
     if (location.hash !== '#' + id) history.pushState(null, '', '#' + id);
     window.scrollTo(0, 0);
   }
@@ -101,6 +102,8 @@ window.LAB = (function () {
 
   const api = {
     add(m) { modules.push(m); },
+    list() { return modules.map((m) => ({ id: m.id, level: m.level, title: m.title })); },
+    levelName(l) { return LEVELS[l] ? LEVELS[l].name : ''; },
     start() {
       document.querySelectorAll('[data-level]').forEach((b) => b.addEventListener('click', () => renderList(Number(b.dataset.level))));
       document.getElementById('back').addEventListener('click', () => { history.pushState(null, '', location.pathname); home(); });

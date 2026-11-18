@@ -59,7 +59,7 @@ LAB.add({
         `▸ 유출된 해시를 GPU로 대입 (초당 100억 회): ${fmtTime(guessesFast)}\n` +
         `▸ 로그인 화면에서 직접 대입 (초당 10회):  ${fmtTime(guessesOnline)}\n` +
         (issues.length ? `⚠ 약점: ${issues.join(', ')}` : '✓ 눈에 띄는 패턴 없음');
-      if (bits >= 80 && !completed) { completed = true; complete(bits); }
+      if (bits >= 80 && !completed) { completed = true; complete(Math.min(100, bits)); }
     });
   },
 });

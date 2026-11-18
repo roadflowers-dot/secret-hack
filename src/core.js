@@ -39,24 +39,46 @@ export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&a
 const IP_RE = /^(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)(?:\.(?!$)|$)){4}$|^[0-9a-f:]{2,39}$/i;
 export const isIp = (s) => typeof s === 'string' && IP_RE.test(s) && (s.includes('.') || s.includes(':'));
 
-// Public IP as seen from the internet (via api.ipify.org). Without a server this is the only way to learn it,
-// so it is client-reported: good for monitoring, not a security boundary.
-export async function getIp() {
-  try { const c = sessionStorage.getItem('sh_ip'); if (c) return c; } catch { /* ignore */ }
-  let ip = 'unknown';
-  if (EMU) ip = params.get('ip') || '127.0.0.1';
-  else {
-    try {
-      const ctl = new AbortController();
-      const t = setTimeout(() => ctl.abort(), 4000);
-      const r = await fetch('https://api.ipify.org?format=json', { signal: ctl.signal, cache: 'no-store' });
-      clearTimeout(t);
-      const j = await r.json();
-      if (isIp(j.ip)) ip = j.ip;
-    } catch { /* ignore */ }
+// Public IP (+ rough location) as seen from the internet. Without a server the browser has to ask an outside
+// service, so this is client-reported: good for monitoring, not a security boundary.
+//   1) ipapi.co   → IP, country, city, ISP   (free, no key, ~1000 lookups/day per visitor IP)
+//   2) ipify.org  → IP only (fallback)
+const clip = (v, n) => (typeof v === 'string' ? v.slice(0, n) : '');
+async function fetchJson(url, ms = 4000) {
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), ms);
+  try { const r = await fetch(url, { signal: ctl.signal, cache: 'no-store' }); return r.ok ? await r.json() : null; }
+  catch { return null; } finally { clearTimeout(t); }
+}
+export async function getNet() {
+  try { const c = JSON.parse(sessionStorage.getItem('sh_net') || 'null'); if (c && c.ip) return c; } catch { /* ignore */ }
+  let net = { ip: 'unknown', geo: null };
+  if (EMU) {
+    net = { ip: params.get('ip') || '127.0.0.1', geo: { country: 'South Korea', cc: 'KR', city: params.get('city') || 'Seoul', region: 'Seoul', org: 'Emulator ISP' } };
+  } else {
+    const g = await fetchJson('https://ipapi.co/json/');
+    if (g && isIp(g.ip)) {
+      net = { ip: g.ip, geo: { country: clip(g.country_name, 60), cc: clip(g.country_code, 2), city: clip(g.city, 60), region: clip(g.region, 60), org: clip(g.org, 100) } };
+    } else {
+      const j = await fetchJson('https://api.ipify.org?format=json');
+      if (j && isIp(j.ip)) net.ip = j.ip;
+    }
   }
-  try { if (ip !== 'unknown') sessionStorage.setItem('sh_ip', ip); } catch { /* ignore */ }
-  return ip;
+  try { if (net.ip !== 'unknown') sessionStorage.setItem('sh_net', JSON.stringify(net)); } catch { /* ignore */ }
+  return net;
+}
+export async function getIp() { return (await getNet()).ip; }
+
+// "Windows · Chrome", "iPhone · Safari", ...
+export function parseUA(ua) {
+  ua = String(ua || '');
+  const os = /Windows NT/.test(ua) ? 'Windows' : /iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) ? 'iPad'
+    : /Android/.test(ua) ? 'Android' : /CrOS/.test(ua) ? 'ChromeOS' : /Mac OS X/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : '기타 OS';
+  const br = /Edg\//.test(ua) ? 'Edge' : /OPR\/|Opera/.test(ua) ? 'Opera' : /SamsungBrowser/.test(ua) ? 'Samsung Internet'
+    : /KAKAOTALK/i.test(ua) ? 'KakaoTalk' : /NAVER/.test(ua) ? 'Naver' : /Whale\//.test(ua) ? 'Whale'
+    : /Firefox\/|FxiOS/.test(ua) ? 'Firefox' : /Chrome\/|CriOS/.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : '기타 브라우저';
+  const kind = /iPad|Tablet/.test(ua) ? '태블릿' : /Mobi|iPhone|Android/.test(ua) ? '모바일' : 'PC';
+  return `${os} · ${br} · ${kind}`;
 }
 
 export function authReady() {
@@ -95,18 +117,21 @@ export async function logEvent(user, ip, type, detail, { severity = 'info', key 
   } catch (e) { console.warn('event not logged:', e.code || e.message); }
 }
 
-async function trackVisit(user, ip) {
+async function trackVisit(user, net) {
+  const { ip, geo } = net;
   const ref = doc(db, 'visitors', user.uid);
+  const device = parseUA(navigator.userAgent);
   const base = {
     uid: user.uid, email: user.email,
     name: (user.displayName || '').slice(0, 100), photo: (user.photoURL || '').slice(0, 500),
     ip, ua: navigator.userAgent.slice(0, 300), path: location.pathname.slice(0, 100),
-    lastSeen: serverTimestamp(),
+    device, lastSeen: serverTimestamp(),
+    ...(geo ? { country: geo.country, cc: geo.cc, city: geo.city, region: geo.region, org: geo.org } : {}),
   };
   try {
     const snap = await getDoc(ref);
     if (!snap.exists()) {
-      await setDoc(ref, { ...base, ips: [ip], hits: 1, firstSeen: serverTimestamp() });
+      await setDoc(ref, { ...base, ips: [ip], devices: [device], hits: 1, firstSeen: serverTimestamp() });
     } else {
       const d = snap.data();
       const last = d.lastSeen ? d.lastSeen.toMillis() : 0;
@@ -114,6 +139,8 @@ async function trackVisit(user, ip) {
       const ips = d.ips || [];
       const upd = { ...base, hits: increment(1) };
       if (!ips.includes(ip) && ips.length < 20) upd.ips = arrayUnion(ip);
+      const devs = d.devices || [];
+      if (!devs.includes(device) && devs.length < 10) upd.devices = arrayUnion(device);
       await updateDoc(ref, upd);
     }
   } catch (e) { console.warn('visit not tracked:', e.code || e.message); }
@@ -132,7 +159,8 @@ export function showBlocked(reason) {
 
 // Runs on every protected page. Returns { user, ip, admin } or null if the page must stop.
 export async function guard({ requireAdmin = false } = {}) {
-  const [ip, user] = await Promise.all([getIp(), authReady()]);
+  const [net, user] = await Promise.all([getNet(), authReady()]);
+  const { ip } = net;
   let ipBlocked = false;
   if (ip !== 'unknown') {
     try { ipBlocked = (await getDoc(doc(db, 'blockedIps', ip))).exists(); } catch { /* ignore */ }
@@ -155,9 +183,36 @@ export async function guard({ requireAdmin = false } = {}) {
     showBlocked('관리자 권한이 없습니다.');
     return null;
   }
-  await trackVisit(user, ip);
+  await trackVisit(user, net);
+  logActivity(user, 'page', location.pathname);
+  startPresence(user);
   watchBlocks(user, ip);
-  return { user, ip, admin };
+  return { user, ip, admin, geo: net.geo };
+}
+
+// ───────── Activity timeline (one small doc per page view / lab opened) ─────────
+export async function logActivity(user, type, detail) {
+  const id = `${user.uid}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+  try {
+    await setDoc(doc(db, 'activity', id), { uid: user.uid, email: user.email, type, detail: String(detail || '').slice(0, 200), at: serverTimestamp() });
+  } catch (e) { console.warn('activity not logged:', e.code || e.message); }
+}
+
+// ───────── Presence: heartbeat every 60s while the tab is visible ─────────
+function startPresence(user) {
+  const ref = doc(db, 'presence', user.uid);
+  let last = 0;
+  const beat = async (state = 'active', force = false) => {
+    if (!force && Date.now() - last < 6_000) return;
+    last = Date.now();
+    try {
+      await setDoc(ref, { uid: user.uid, email: user.email, page: (location.pathname + location.hash).slice(0, 100), state, at: serverTimestamp() });
+    } catch { /* throttled by rules or offline — next beat retries */ }
+  };
+  beat('active', true);
+  setInterval(() => { if (!document.hidden) beat('active', true); }, 60_000);
+  document.addEventListener('visibilitychange', () => beat(document.hidden ? 'away' : 'active'));
+  window.addEventListener('hashchange', () => beat('active'));
 }
 
 // Realtime: block the page the moment an admin blocks this account or IP, restore it when unblocked.

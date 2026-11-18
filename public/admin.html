@@ -19,6 +19,7 @@
   <div class="wrap admin" style="max-width:1280px;margin:0 auto;padding:20px">
     <div class="stats">
       <div class="stat"><b id="s-visitors">-</b><span>방문 계정</span></div>
+      <div class="stat"><b id="s-online" class="cyan">-</b><span>지금 접속 중</span></div>
       <div class="stat"><b id="s-active">-</b><span>24시간 활성</span></div>
       <div class="stat"><b id="s-users" class="red">-</b><span>차단 계정</span></div>
       <div class="stat"><b id="s-blocked" class="red">-</b><span>차단 IP</span></div>
@@ -42,6 +43,7 @@
 
       <div class="tabs" role="tablist">
         <button role="tab" aria-selected="true" data-tab="visitors">방문자</button>
+        <button role="tab" aria-selected="false" data-tab="online">접속 중 <span id="onlinecount"></span></button>
         <button role="tab" aria-selected="false" data-tab="blocked">차단 목록</button>
         <button role="tab" aria-selected="false" data-tab="events">보안 로그</button>
         <span class="sp" style="flex:1"></span>
@@ -50,7 +52,10 @@
       </div>
 
       <div class="tbl" data-pane="visitors">
-        <table><thead><tr><th>IP</th><th>계정</th><th>방문 수</th><th>최근 접속</th><th>처음 접속</th><th>마지막 경로</th><th>User-Agent</th><th></th></tr></thead><tbody id="tv"></tbody></table>
+        <table><thead><tr><th>상태</th><th>계정</th><th>IP · 위치</th><th>기기</th><th>방문</th><th>진행도</th><th>최근 접속</th><th></th></tr></thead><tbody id="tv"></tbody></table>
+      </div>
+      <div class="tbl" data-pane="online" hidden>
+        <table><thead><tr><th>상태</th><th>계정</th><th>보고 있는 페이지</th><th>마지막 신호</th><th>IP · 위치</th><th>기기</th></tr></thead><tbody id="to"></tbody></table>
       </div>
       <div class="tbl" data-pane="blocked" hidden>
         <table><thead><tr><th>종류</th><th>대상</th><th>사유</th><th>차단자</th><th>차단 시각</th><th></th></tr></thead><tbody id="tb"></tbody></table>
@@ -58,10 +63,28 @@
       <div class="tbl" data-pane="events" hidden>
         <table><thead><tr><th>시각</th><th>종류</th><th>IP</th><th>계정</th><th>내용</th></tr></thead><tbody id="te"></tbody></table>
       </div>
+      <p class="muted" style="font-size:12px;margin:8px 0 0">방문자 줄을 클릭하면 활동 타임라인과 상세 정보를 볼 수 있습니다. 위치는 IP 기반 추정치(도시 수준)이며 VPN을 쓰면 VPN 위치가 표시됩니다.</p>
     </div>
+
+    <section class="panel" id="detail" hidden style="margin-top:16px">
+      <div class="row" style="align-items:center">
+        <h2 style="margin:0" id="d-title">방문자 상세</h2>
+        <button class="small" id="d-close" style="flex:0 0 auto">닫기 ✕</button>
+      </div>
+      <div class="two" style="margin-top:12px">
+        <div class="card" id="d-profile"></div>
+        <div class="card" id="d-progress"></div>
+      </div>
+      <h3>활동 타임라인</h3>
+      <div class="timeline" id="d-timeline"></div>
+    </section>
   </div>
 </div>
 <script src="/js/matrix.js"></script>
+<script src="/js/lab.js"></script>
+<script src="/js/levels/beginner.js"></script>
+<script src="/js/levels/intermediate.js"></script>
+<script src="/js/levels/advanced.js"></script>
 <script type="module" src="/js/dist/admin.js"></script>
 </body>
 </html>

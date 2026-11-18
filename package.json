@@ -4,6 +4,7 @@
   "description": "Matrix-themed web security training site on Firebase (Hosting + Auth + Firestore, Spark free plan).",
   "private": true,
   "scripts": {
+    "prebuild": "node -e \"require('fs').rmSync('public/js/dist',{recursive:true,force:true})\"",
     "build": "esbuild src/login.js src/lab.js src/admin.js --bundle --splitting --format=esm --minify --target=es2022 --outdir=public/js/dist",
     "deploy": "npm run build && firebase deploy --only hosting,firestore"
   },
