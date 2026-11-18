@@ -46,6 +46,7 @@
         <button role="tab" aria-selected="false" data-tab="online">접속 중 <span id="onlinecount"></span></button>
         <button role="tab" aria-selected="false" data-tab="blocked">차단 목록</button>
         <button role="tab" aria-selected="false" data-tab="events">보안 로그</button>
+        <button role="tab" aria-selected="false" data-tab="admins">관리자</button>
         <span class="sp" style="flex:1"></span>
         <input id="filter" placeholder="IP / 이메일 검색" style="max-width:240px" autocomplete="off">
         
@@ -62,6 +63,14 @@
       </div>
       <div class="tbl" data-pane="events" hidden>
         <table><thead><tr><th>시각</th><th>종류</th><th>IP</th><th>계정</th><th>내용</th></tr></thead><tbody id="te"></tbody></table>
+      </div>
+      <div data-pane="admins" hidden>
+        <form id="grantform" class="row" style="margin-bottom:10px">
+          <div><label for="gemail">관리자로 지정할 Google 계정 이메일</label><input id="gemail" type="email" placeholder="friend@gmail.com" autocomplete="off" required></div>
+          <button type="submit">＋ 관리자 권한 부여</button>
+        </form>
+        <p class="muted" style="font-size:12px;margin:0 0 8px">권한을 받은 사람은 새로고침 없이 바로 ADMIN 버튼이 생깁니다. <b>기본 관리자</b>(Firebase 콘솔에서 직접 등록한 계정)는 여기서 해제할 수 없고, 자기 자신의 권한도 해제할 수 없습니다.</p>
+        <div class="tbl"><table><thead><tr><th>이메일</th><th>구분</th><th>부여한 사람</th><th>부여 시각</th><th>상태</th><th></th></tr></thead><tbody id="ta"></tbody></table></div>
       </div>
       <p class="muted" style="font-size:12px;margin:8px 0 0">방문자 줄을 클릭하면 활동 타임라인과 상세 정보를 볼 수 있습니다. 위치는 IP 기반 추정치(도시 수준)이며 VPN을 쓰면 VPN 위치가 표시됩니다.</p>
     </div>

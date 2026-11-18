@@ -190,6 +190,11 @@ export async function guard({ requireAdmin = false } = {}) {
   return { user, ip, admin, geo: net.geo };
 }
 
+// ───────── Live admin status (granted / revoked from the admin panel) ─────────
+export function watchAdmin(user, onChange) {
+  return onSnapshot(doc(db, 'admins', user.email), (snap) => onChange(snap.exists()), () => { /* ignore */ });
+}
+
 // ───────── Activity timeline (one small doc per page view / lab opened) ─────────
 export async function logActivity(user, type, detail) {
   const id = `${user.uid}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;

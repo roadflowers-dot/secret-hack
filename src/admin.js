@@ -1,4 +1,4 @@
-import { guard, fillWho, db, esc, isIp, logEvent, parseUA } from './core.js';
+import { guard, fillWho, db, esc, isIp, logEvent, parseUA, watchAdmin, showBlocked } from './core.js';
 import {
   collection, query, where, orderBy, limit, onSnapshot, doc, setDoc, deleteDoc, getDocs, serverTimestamp,
 } from 'firebase/firestore';
@@ -9,7 +9,7 @@ if (ctx) {
   fillWho(user);
   const $ = (id) => document.getElementById(id);
   const msg = $('msg');
-  const state = { visitors: [], blocked: [], blockedIps: [], events: [], presence: [], labDone: [] };
+  const state = { visitors: [], blocked: [], blockedIps: [], events: [], presence: [], labDone: [], admins: [] };
   const MODULES = (window.LAB && LAB.list()) || [];
   let selected = null;
   $('myip').textContent = myIp;
@@ -117,10 +117,29 @@ if (ctx) {
       <td>${esc(e.ip)}</td><td class="muted">${esc(e.email)}</td><td class="muted">${esc(e.detail)}</td></tr>`).join('') ||
       '<tr><td colspan="5" class="muted">로그 없음</td></tr>';
 
+    const adminRows = [...state.admins].sort((a, b) => (('grantedBy' in a) - ('grantedBy' in b)) || ms(a.at) - ms(b.at));
+    $('ta').innerHTML = adminRows.filter((a) => matches(a.id, a.grantedBy)).map((a) => {
+      const root = !('grantedBy' in a);
+      const me = a.id === user.email;
+      const v = state.visitors.find((x) => x.email === a.id);
+      const act = me ? '<span class="muted">나</span>' : root ? '<span class="muted">해제 불가</span>'
+        : `<button class="small danger" data-revoke="${esc(a.id)}">권한 해제</button>`;
+      return `<tr><td class="${me ? 'cyan' : ''}">${esc(a.id)}</td>
+        <td>${root ? '<span class="tag amber">기본 관리자</span>' : '<span class="tag">부여됨</span>'}</td>
+        <td class="muted">${esc(a.grantedBy || 'Firebase 콘솔')}</td><td>${root ? '<span class="muted">-</span>' : fmt(a.at)}</td>
+        <td style="white-space:nowrap">${v ? statusCell(v.uid, v.lastSeen) : '<span class="muted">아직 접속 안 함</span>'}</td><td>${act}</td></tr>`;
+    }).join('') || '<tr><td colspan="6" class="muted">관리자 없음</td></tr>';
+
     if (selected) renderDetailHeader();
   }
 
   // ───────── visitor detail: profile, lab progress, timeline ─────────
+  function adminBadge(v) {
+    const a = state.admins.find((x) => x.id === v.email);
+    if (!a) return v.uid === user.uid ? '' : `일반 사용자 <button class="small" data-grant="${esc(v.email)}">관리자로 지정</button>`;
+    if (!('grantedBy' in a)) return '<span class="amber">기본 관리자</span>';
+    return `<span class="cyan">관리자</span> <span class="muted">(${esc(a.grantedBy)} 부여)</span>${v.email === user.email ? '' : ` <button class="small danger" data-revoke="${esc(v.email)}">권한 해제</button>`}`;
+  }
   function renderDetailHeader() {
     const v = state.visitors.find((x) => x.uid === selected);
     if (!v) return;
@@ -128,6 +147,7 @@ if (ctx) {
     $('d-title').innerHTML = `${v.photo ? `<img src="${esc(v.photo)}" alt="" referrerpolicy="no-referrer" style="width:28px;height:28px;border-radius:50%;vertical-align:-6px;margin-right:8px">` : ''}${esc(v.email)}`;
     $('d-profile').innerHTML = `<h4>👤 프로필 · 접속 정보</h4><dl class="kv">
       <dt>상태</dt><dd>${statusCell(v.uid, v.lastSeen)}${st !== 'off' && p ? ` · <span class="cyan">${esc(p.page)}</span>` : ''}</dd>
+      <dt>권한</dt><dd>${adminBadge(v)}</dd>
       <dt>이름</dt><dd>${esc(v.name) || '-'}</dd>
       <dt>현재 IP</dt><dd>${esc(v.ip)}</dd>
       <dt>위치</dt><dd>${place(v)}${v.region && v.region !== v.city ? ` (${esc(v.region)})` : ''}</dd>
@@ -157,6 +177,8 @@ if (ctx) {
     'blocked.attempt': (d) => ['tl-warn', `<span class="red">차단된 상태로 접근</span> · ${esc(d)}`],
     'admin.block': (d) => ['tl-warn', `관리자 차단 조치 · ${esc(d)}`],
     'admin.unblock': (d) => ['', `관리자 해제 조치 · ${esc(d)}`],
+    'admin.grant': (d) => ['tl-login', `관리자 권한 부여 · ${esc(d)}`],
+    'admin.revoke': (d) => ['tl-warn', `관리자 권한 해제 · ${esc(d)}`],
   };
   async function openDetail(uid) {
     selected = uid;
@@ -194,6 +216,9 @@ if (ctx) {
   listen('events', query(collection(db, 'events'), orderBy('at', 'desc'), limit(300)));
   listen('presence', collection(db, 'presence'));
   listen('labDone', query(collection(db, 'events'), where('type', '==', 'lab.complete')));
+  listen('admins', collection(db, 'admins'));
+  // If another admin revokes my rights, close the panel immediately.
+  watchAdmin(user, (isAdmin) => { if (!isAdmin) showBlocked('관리자 권한이 해제되었습니다.'); });
   setInterval(() => { if (!document.hidden) render(); }, 10_000); // refresh "n초 전" and online status
 
   // ───────── block / unblock ─────────
@@ -224,6 +249,31 @@ if (ctx) {
     } catch (e) { say('해제 실패: ' + (e.code || e.message)); }
   }
 
+  async function grant(email) {
+    email = String(email || '').trim().toLowerCase();
+    if (!/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/.test(email)) return say('올바른 이메일 주소가 아닙니다.');
+    if (state.admins.some((a) => a.id === email)) return say(`${email} 은(는) 이미 관리자입니다.`);
+    if (!confirm(`${email} 에게 관리자 권한을 줄까요?\n방문자 정보·로그를 보고 차단할 수 있게 됩니다.`)) return;
+    try {
+      await setDoc(doc(db, 'admins', email), { email, grantedBy: user.email, at: serverTimestamp() });
+      await audit('admin.grant', `admin granted to ${email}`);
+      say(`${email} 관리자 권한 부여 완료`, true);
+    } catch (e) { say('권한 부여 실패: ' + (e.code || e.message)); }
+  }
+  async function revoke(email) {
+    if (!confirm(`${email} 의 관리자 권한을 해제할까요?`)) return;
+    try {
+      await deleteDoc(doc(db, 'admins', email));
+      await audit('admin.revoke', `admin revoked from ${email}`);
+      say(`${email} 관리자 권한 해제`, true);
+    } catch (e) { say('권한 해제 실패: ' + (e.code || e.message)); }
+  }
+  $('grantform').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await grant($('gemail').value);
+    $('gemail').value = '';
+  });
+
   $('blockform').addEventListener('submit', async (e) => {
     e.preventDefault();
     await blockIp($('bip').value.trim(), $('breason').value.trim());
@@ -237,6 +287,8 @@ if (ctx) {
       else if (d.blockUid) { const r = prompt('이 계정을 차단합니다. 사유:', ''); if (r !== null) blockUid(d.blockUid, r); }
       else if (d.unblockIp) { if (confirm(`IP ${d.unblockIp} 차단을 해제할까요?`)) unblock('ip', d.unblockIp); }
       else if (d.unblockUid) { if (confirm('이 계정 차단을 해제할까요?')) unblock('uid', d.unblockUid); }
+      else if (d.grant) grant(d.grant);
+      else if (d.revoke) revoke(d.revoke);
       return;
     }
     const row = e.target.closest('#tv tr[data-uid]');

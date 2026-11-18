@@ -3,7 +3,8 @@ rules_version = '2';
 // SECRET//HACK — all access control lives here (no server on the Spark plan).
 //
 // Collections
-//   admins/{email}      admin allow-list. Create docs by hand in the Firebase console. Never writable from clients.
+//   admins/{email}      admin allow-list. Docs created by hand in the Firebase console are "root" admins and can never be
+//                       changed from the app. Admins can grant/revoke other admins from the panel (docs with grantedBy).
 //   blocked/{uid}       blocked Google accounts (enforced here: a blocked account cannot write anything).
 //   blockedIps/{ip}     blocked IPs (checked by the client — see README for the limits of IP blocking without a server).
 //   visitors/{uid}      one doc per signed-in account: last IP, IP history, hits, user agent.
@@ -31,8 +32,21 @@ service cloud.firestore {
     }
 
     match /admins/{email} {
-      allow get: if signedIn() && request.auth.token.email == email;
-      allow list, write: if false;
+      allow get: if signedIn() && (request.auth.token.email == email || isAdmin());
+      allow list: if isAdmin();
+      // Grant: any admin, for a valid lowercase email that is not already an admin.
+      allow create: if isAdmin()
+        && email.size() <= 254
+        && email.matches('^[a-z0-9._%+-]+@[a-z0-9.-]+[.][a-z]{2,}$')
+        && request.resource.data.keys().hasOnly(['email', 'grantedBy', 'at'])
+        && request.resource.data.email == email
+        && request.resource.data.grantedBy == request.auth.token.email
+        && request.resource.data.at == request.time;
+      // Revoke: any admin, only for panel-granted admins (root admins have no grantedBy), never yourself.
+      allow delete: if isAdmin()
+        && email != request.auth.token.email
+        && 'grantedBy' in resource.data;
+      allow update: if false;
     }
 
     match /blocked/{uid} {
@@ -118,7 +132,7 @@ service cloud.firestore {
         );
       }
       function adminCanWrite() {
-        return isAdmin() && ownId() && validEvent(['admin.block', 'admin.unblock']);
+        return isAdmin() && ownId() && validEvent(['admin.block', 'admin.unblock', 'admin.grant', 'admin.revoke']);
       }
 
       allow read: if isAdmin();

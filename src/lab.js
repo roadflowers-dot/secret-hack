@@ -1,10 +1,11 @@
-import { guard, fillWho, logEvent, logActivity } from './core.js';
+import { guard, fillWho, logEvent, logActivity, watchAdmin } from './core.js';
 
 const ctx = await guard();
 if (ctx) {
   const { user, ip, admin } = ctx;
   fillWho(user);
   if (admin) document.getElementById('adminlink').hidden = false;
+  watchAdmin(user, (isAdmin) => { document.getElementById('adminlink').hidden = !isAdmin; });
   LAB.onComplete = (mod, score) => logEvent(user, ip, 'lab.complete', `L${mod.level} ${mod.id}${score != null ? ' score=' + score : ''}`, { key: 'lab_' + mod.id });
   LAB.onOpen = (mod) => logActivity(user, 'lab.open', `${mod.id} · ${mod.title}`);
   LAB.start();
