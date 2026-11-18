@@ -6,8 +6,8 @@ import {
 } from 'firebase/auth';
 import {
   getFirestore, connectFirestoreEmulator, doc, getDoc, setDoc, updateDoc,
-  serverTimestamp, increment, arrayUnion,
-} from 'firebase/firestore/lite';
+  serverTimestamp, increment, arrayUnion, onSnapshot,
+} from 'firebase/firestore';
 
 // ───────── Emulator mode (local testing only: http://localhost:5000/?emu) ─────────
 const LOCAL = ['localhost', '127.0.0.1'].includes(location.hostname);
@@ -156,7 +156,28 @@ export async function guard({ requireAdmin = false } = {}) {
     return null;
   }
   await trackVisit(user, ip);
+  watchBlocks(user, ip);
   return { user, ip, admin };
+}
+
+// Realtime: block the page the moment an admin blocks this account or IP, restore it when unblocked.
+// Listeners only cost a read when the watched doc changes.
+function watchBlocks(user, ip) {
+  const state = { acct: false, ip: false };
+  let shown = false;
+  const apply = async () => {
+    const blocked = state.acct || state.ip;
+    if (blocked && !shown) {
+      shown = true;
+      showBlocked(state.acct ? '이 Google 계정은 관리자에 의해 차단되었습니다.' : '당신의 IP 주소는 관리자에 의해 차단되었습니다.');
+      await logEvent(user, ip, 'blocked.attempt', `${state.acct ? 'account' : 'ip'} blocked (live) · ${location.pathname}`, { severity: 'warn', key: 'blocked_' + hourKey() });
+    } else if (!blocked && shown) {
+      location.reload();
+    }
+  };
+  const watch = (ref, key) => onSnapshot(ref, (snap) => { state[key] = snap.exists(); apply(); }, () => { /* ignore */ });
+  watch(doc(db, 'blocked', user.uid), 'acct');
+  if (ip !== 'unknown') watch(doc(db, 'blockedIps', ip), 'ip');
 }
 
 export function fillWho(user) {

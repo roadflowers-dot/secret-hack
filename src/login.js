@@ -1,6 +1,6 @@
 import { auth, db, getIp, login, emuLogin, isEmu, logEvent, hourKey, showBlocked } from './core.js';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore/lite';
+import { doc, getDoc } from 'firebase/firestore';
 
 const err = document.getElementById('err');
 const btn = document.getElementById('gbtn');

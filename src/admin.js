@@ -1,12 +1,7 @@
-import { guard, fillWho, app, emulatorMode, esc, isIp, logEvent } from './core.js';
+import { guard, fillWho, db, esc, isIp, logEvent } from './core.js';
 import {
-  getFirestore, connectFirestoreEmulator,
   collection, query, orderBy, limit, onSnapshot, doc, setDoc, deleteDoc, serverTimestamp,
 } from 'firebase/firestore';
-
-// The admin page needs live listeners, so it uses the full Firestore SDK (other pages use the lighter Lite SDK).
-const db = getFirestore(app);
-if (emulatorMode) connectFirestoreEmulator(db, '127.0.0.1', 8080);
 
 const ctx = await guard({ requireAdmin: true });
 if (ctx) {
