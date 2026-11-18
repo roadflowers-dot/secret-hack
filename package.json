@@ -1,20 +1,14 @@
 {
   "name": "secret-hack",
-  "version": "1.0.0",
-  "description": "Matrix-themed web security training lab: learn how attacks work and test the defenses safely.",
-  "main": "server.js",
+  "version": "2.0.0",
+  "description": "Matrix-themed web security training site on Firebase (Hosting + Auth + Firestore, Spark free plan).",
   "private": true,
   "scripts": {
-    "start": "node --disable-warning=ExperimentalWarning server.js",
-    "dev": "NODE_ENV=development DEV_LOGIN=1 node --disable-warning=ExperimentalWarning server.js",
-    "unblock": "node scripts/unblock.js"
+    "build": "esbuild src/login.js src/lab.js src/admin.js --bundle --splitting --format=esm --minify --target=es2022 --outdir=public/js/dist",
+    "deploy": "npm run build && firebase deploy --only hosting,firestore"
   },
-  "engines": {
-    "node": ">=22.13"
-  },
-  "dependencies": {
-    "cookie-session": "^2.1.1",
-    "express": "^5.1.0",
-    "google-auth-library": "^9.15.1"
+  "devDependencies": {
+    "esbuild": "0.25.5",
+    "firebase": "13.2.0"
   }
 }

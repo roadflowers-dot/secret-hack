@@ -38,7 +38,7 @@ window.LAB = (function () {
     const first = !done[mod.id];
     done[mod.id] = { at: Date.now(), score };
     try { localStorage.setItem(KEY, JSON.stringify(done)); } catch { /* ignore */ }
-    MX.api('/api/progress', { method: 'POST', body: { module: mod.id, level: mod.level, score } });
+    if (typeof api.onComplete === 'function') api.onComplete(mod, score);
     const banner = document.getElementById('modbanner');
     if (banner) {
       banner.hidden = false;
@@ -99,7 +99,7 @@ window.LAB = (function () {
     if (id && modules.some((m) => m.id === id)) open(id); else home();
   }
 
-  return {
+  const api = {
     add(m) { modules.push(m); },
     start() {
       document.querySelectorAll('[data-level]').forEach((b) => b.addEventListener('click', () => renderList(Number(b.dataset.level))));
@@ -108,4 +108,5 @@ window.LAB = (function () {
       route();
     },
   };
+  return api;
 })();

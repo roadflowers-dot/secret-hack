@@ -1,0 +1,125 @@
+rules_version = '2';
+
+// SECRET//HACK — all access control lives here (no server on the Spark plan).
+//
+// Collections
+//   admins/{email}      admin allow-list. Create docs by hand in the Firebase console. Never writable from clients.
+//   blocked/{uid}       blocked Google accounts (enforced here: a blocked account cannot write anything).
+//   blockedIps/{ip}     blocked IPs (checked by the client — see README for the limits of IP blocking without a server).
+//   visitors/{uid}      one doc per signed-in account: last IP, IP history, hits, user agent.
+//   events/{id}         security log. Ids are prefixed with the writer's uid so each user has a bounded set of docs.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+    function isAdmin() {
+      return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.token.email));
+    }
+    function isBlocked() {
+      return exists(/databases/$(database)/documents/blocked/$(request.auth.uid));
+    }
+    function shortStr(v, n) {
+      return v is string && v.size() <= n;
+    }
+
+    match /admins/{email} {
+      allow get: if signedIn() && request.auth.token.email == email;
+      allow list, write: if false;
+    }
+
+    match /blocked/{uid} {
+      allow get: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow list: if isAdmin();
+      allow create, update: if isAdmin()
+        && uid != request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid', 'email', 'ip', 'reason', 'by', 'at'])
+        && request.resource.data.uid == uid
+        && shortStr(request.resource.data.reason, 200)
+        && request.resource.data.by == request.auth.token.email
+        && request.resource.data.at == request.time;
+      allow delete: if isAdmin();
+    }
+
+    match /blockedIps/{ip} {
+      // Anyone may check a single IP (needed on the login page, before sign-in). Listing is admin-only.
+      allow get: if true;
+      allow list: if isAdmin();
+      allow create, update: if isAdmin()
+        && ip.size() <= 64
+        && request.resource.data.keys().hasOnly(['ip', 'reason', 'by', 'at'])
+        && request.resource.data.ip == ip
+        && shortStr(request.resource.data.reason, 200)
+        && request.resource.data.by == request.auth.token.email
+        && request.resource.data.at == request.time;
+      allow delete: if isAdmin();
+    }
+
+    match /visitors/{uid} {
+      function validVisitor() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['uid', 'email', 'name', 'photo', 'ip', 'ips', 'ua', 'path', 'hits', 'firstSeen', 'lastSeen'])
+          && d.uid == uid
+          && d.email == request.auth.token.email
+          && shortStr(d.name, 100)
+          && shortStr(d.photo, 500)
+          && shortStr(d.ip, 64)
+          && d.ips is list && d.ips.size() <= 20
+          && shortStr(d.ua, 300)
+          && shortStr(d.path, 100)
+          && d.lastSeen == request.time;
+      }
+      allow get: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow list: if isAdmin();
+      allow create: if signedIn() && request.auth.uid == uid && !isBlocked()
+        && validVisitor()
+        && request.resource.data.hits == 1
+        && request.resource.data.firstSeen == request.time;
+      // At most one update per 30 seconds, hits can only go up by one.
+      allow update: if signedIn() && request.auth.uid == uid && !isBlocked()
+        && validVisitor()
+        && request.resource.data.hits == resource.data.hits + 1
+        && request.resource.data.firstSeen == resource.data.firstSeen
+        && request.time > resource.data.lastSeen + duration.value(30, 's');
+      allow delete: if false;
+    }
+
+    match /events/{id} {
+      function validEvent(types) {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['at', 'type', 'uid', 'email', 'ip', 'detail', 'severity'])
+          && d.uid == request.auth.uid
+          && d.email == request.auth.token.email
+          && d.at == request.time
+          && d.type in types
+          && shortStr(d.ip, 64)
+          && shortStr(d.detail, 300)
+          && d.severity in ['info', 'warn'];
+      }
+      function ownId() {
+        return id.matches('^' + request.auth.uid + '_[A-Za-z0-9_.:-]{1,80}$');
+      }
+      function userCanWrite() {
+        return signedIn() && ownId() && (
+          (!isBlocked() && validEvent(['auth.login', 'lab.complete'])) ||
+          validEvent(['blocked.attempt'])
+        );
+      }
+      function adminCanWrite() {
+        return isAdmin() && ownId() && validEvent(['admin.block', 'admin.unblock']);
+      }
+
+      allow read: if isAdmin();
+      allow create: if userCanWrite() || adminCanWrite();
+      // Re-writing the same doc (e.g. finishing a lab again) is throttled to once per 10 seconds.
+      allow update: if (userCanWrite() || adminCanWrite()) && request.time > resource.data.at + duration.value(10, 's');
+      allow delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -18,9 +18,9 @@
 
   <div class="wrap admin" style="max-width:1280px;margin:0 auto;padding:20px">
     <div class="stats">
-      <div class="stat"><b id="s-visitors">-</b><span>방문 IP</span></div>
+      <div class="stat"><b id="s-visitors">-</b><span>방문 계정</span></div>
       <div class="stat"><b id="s-active">-</b><span>24시간 활성</span></div>
-      <div class="stat"><b id="s-users">-</b><span>로그인 계정</span></div>
+      <div class="stat"><b id="s-users" class="red">-</b><span>차단 계정</span></div>
       <div class="stat"><b id="s-blocked" class="red">-</b><span>차단 IP</span></div>
     </div>
 
@@ -38,6 +38,7 @@
         </div>
       </form>
       <div class="err" id="msg" role="status"></div>
+      <p class="muted" style="font-size:12px;margin:0 0 8px">계정 차단은 Firestore 보안 규칙으로 강제됩니다. IP 차단은 서버 없이 브라우저에서 확인하므로 VPN 등으로 우회될 수 있어, 계정 차단과 함께 쓰는 것을 권장합니다.</p>
 
       <div class="tabs" role="tablist">
         <button role="tab" aria-selected="true" data-tab="visitors">방문자</button>
@@ -45,14 +46,14 @@
         <button role="tab" aria-selected="false" data-tab="events">보안 로그</button>
         <span class="sp" style="flex:1"></span>
         <input id="filter" placeholder="IP / 이메일 검색" style="max-width:240px" autocomplete="off">
-        <label style="display:flex;gap:6px;align-items:center;margin:0"><input type="checkbox" id="auto" checked style="width:auto"> 자동 새로고침</label>
+        
       </div>
 
       <div class="tbl" data-pane="visitors">
-        <table><thead><tr><th>IP</th><th>계정</th><th>요청 수</th><th>최근 접속</th><th>처음 접속</th><th>마지막 경로</th><th>User-Agent</th><th></th></tr></thead><tbody id="tv"></tbody></table>
+        <table><thead><tr><th>IP</th><th>계정</th><th>방문 수</th><th>최근 접속</th><th>처음 접속</th><th>마지막 경로</th><th>User-Agent</th><th></th></tr></thead><tbody id="tv"></tbody></table>
       </div>
       <div class="tbl" data-pane="blocked" hidden>
-        <table><thead><tr><th>IP</th><th>사유</th><th>차단자</th><th>차단 시각</th><th></th></tr></thead><tbody id="tb"></tbody></table>
+        <table><thead><tr><th>종류</th><th>대상</th><th>사유</th><th>차단자</th><th>차단 시각</th><th></th></tr></thead><tbody id="tb"></tbody></table>
       </div>
       <div class="tbl" data-pane="events" hidden>
         <table><thead><tr><th>시각</th><th>종류</th><th>IP</th><th>계정</th><th>내용</th></tr></thead><tbody id="te"></tbody></table>
@@ -61,6 +62,6 @@
   </div>
 </div>
 <script src="/js/matrix.js"></script>
-<script src="/js/admin.js"></script>
+<script type="module" src="/js/dist/admin.js"></script>
 </body>
 </html>

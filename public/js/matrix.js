@@ -42,33 +42,6 @@ window.MX = {
   esc(s) {
     return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   },
-  csrf: '',
-  async api(url, { method = 'GET', body, csrf = true } = {}) {
-    const headers = {};
-    if (body !== undefined) headers['Content-Type'] = 'application/json';
-    if (csrf && MX.csrf && method !== 'GET') headers['X-CSRF-Token'] = MX.csrf;
-    const res = await fetch(url, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), credentials: 'same-origin' });
-    let data = null;
-    try { data = await res.json(); } catch { data = null; }
-    if (res.status === 401 && url !== '/api/me') { location.href = '/login'; }
-    return { status: res.status, ok: res.ok, data, headers: res.headers };
-  },
-  async me() {
-    const r = await MX.api('/api/me');
-    if (!r.ok) { location.href = '/login'; return null; }
-    MX.csrf = r.data.csrf;
-    return r.data;
-  },
-  async logout() {
-    await MX.api('/auth/logout', { method: 'POST', body: {} });
-    location.href = '/login';
-  },
-  fillWho(me) {
-    const el = document.getElementById('who');
-    if (!el) return;
-    el.innerHTML = (me.picture ? `<img src="${MX.esc(me.picture)}" alt="" referrerpolicy="no-referrer">` : '') +
-      `<span>${MX.esc(me.email)}</span>`;
-  },
   type(el, lines, speed = 18) {
     return new Promise((resolve) => {
       let li = 0, ci = 0;

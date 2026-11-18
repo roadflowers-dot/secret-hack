@@ -90,11 +90,12 @@ LAB.add({
   threat: '로그인 상태를 담은 세션 쿠키를 빼앗기면 비밀번호 없이도 계정이 넘어갑니다. 페이지에 끼어든 스크립트, 암호화되지 않은 통신 도청, 다른 사이트에서 몰래 보내는 요청(CSRF)이 쿠키를 노립니다.',
   defense: ['<code>HttpOnly</code> — 자바스크립트가 쿠키를 읽지 못함', '<code>Secure</code> — HTTPS 연결에서만 전송', '<code>SameSite=Lax/Strict</code> — 다른 사이트에서 시작된 요청에 쿠키를 붙이지 않음', '짧은 만료 시간, 로그아웃 시 무효화, CSRF 토큰 병행'],
   render(el, { complete, h, term }) {
-    const visible = document.cookie.includes('sh_sess');
+    const cookieNames = document.cookie.split(';').map((c) => c.split('=')[0].trim()).filter(Boolean);
     const box = h(`<div>
       <div class="card" style="margin-bottom:12px">
         <h4>🔍 이 사이트의 실제 상태</h4>
-        <p style="margin:0">자바스크립트로 <code>document.cookie</code> 를 읽어 보면 세션 쿠키가 <b class="${visible ? 'red' : 'cyan'}">${visible ? '보입니다 (위험)' : '보이지 않습니다'}</b>. ${visible ? '' : '→ 이 사이트의 <code>sh_sess</code> 쿠키에 <code>HttpOnly</code> 가 적용되어 있기 때문입니다.'}</p>
+        <p style="margin:0">자바스크립트로 <code>document.cookie</code> 를 읽은 결과: <b class="cyan">${cookieNames.length ? cookieNames.length + '개 (' + cookieNames.join(', ') + ')' : '쿠키 없음'}</b></p>
+        <p style="margin:6px 0 0">이 사이트는 쿠키 세션 대신 <b>Firebase 인증 토큰</b>을 브라우저 저장소(IndexedDB)에 보관합니다. 이 토큰은 스크립트로 읽을 수 있어 HttpOnly 보호를 받지 못하므로, 대신 <b>CSP</b>로 외부 스크립트 실행을 막고 토큰을 1시간마다 자동 교체해 피해를 줄입니다. 방식마다 지켜야 할 지점이 다르다는 것이 핵심입니다.</p>
       </div>
       <div class="row">
         <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="ho" style="width:auto"> HttpOnly</label>
@@ -160,12 +161,12 @@ LAB.add({
       <div class="out" id="sim"></div>
     </div>`);
     el.appendChild(box);
-    fetch('/api/config', { credentials: 'same-origin' }).then((r) => {
+    fetch('/lab', { cache: 'no-store' }).then((r) => {
       let s = 0;
       const rows = CHECKS.map((c) => {
         const v = r.headers.get(c.k);
         if (v) s += c.w;
-        return `${v ? '✔' : '✗'} ${c.name.padEnd(27)} ${v ? v.slice(0, 70) + (v.length > 70 ? '…' : '') : '(없음 — 운영 환경에서만 적용되는 헤더일 수 있음)'}`;
+        return `${v ? '✔' : '✗'} ${c.name.padEnd(27)} ${v ? v.slice(0, 70) + (v.length > 70 ? '…' : '') : '(없음)'}`;
       });
       box.querySelector('#real').textContent = `등급 ${grade(s)} (${s}/100)\n` + rows.join('\n');
     });

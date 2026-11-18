@@ -1,52 +1,55 @@
 # SECRET//HACK
 
-매트릭스 테마의 웹 보안 훈련장. Google 로그인이 필수이고, 관리자는 접속 IP를 보고 차단할 수 있습니다.
+매트릭스 테마의 해킹 방어 훈련 사이트. **Firebase Spark(무료) 요금제만** 사용합니다. Hosting, Authentication, Firestore로 구성되며 서버(Cloud Functions)가 없습니다. Spark 요금제는 결제 수단이 연결되지 않아 요금이 청구될 수 없습니다. 무료 한도를 넘으면 그날은 해당 기능이 멈출 뿐입니다.
 
-## 실행
+## 구조
 
-```bash
-npm install
-cp .env.example .env   # 값 채우기
-set -a; . ./.env; set +a
-npm start
+```
+public/            Firebase Hosting에 올라가는 정적 파일
+  login.html       Google 로그인
+  lab.html         실습실 (초급/중급/상급 시뮬레이션 10개)
+  admin.html       관리자 패널
+  js/levels/       실습 모듈
+  js/dist/         빌드 결과 (npm run build, git에는 올리지 않음)
+src/               Firebase SDK를 쓰는 페이지 스크립트 (esbuild로 번들)
+firestore.rules    모든 권한 검사 (서버가 없으므로 여기가 보안의 핵심)
+firebase.json      Hosting 설정 + 보안 헤더(CSP 등)
+.github/workflows/firebase-deploy.yml   푸시하면 자동 배포
 ```
 
-| 환경변수 | 설명 |
-|---|---|
-| `GOOGLE_CLIENT_ID` | Google Cloud Console → API 및 서비스 → 사용자 인증 정보 → OAuth 클라이언트 ID(웹). **승인된 JavaScript 원본**에 사이트 주소 등록 (예: `http://localhost:3000`) |
-| `ADMIN_EMAILS` | 관리자 Gmail 주소 (쉼표로 여러 명) |
-| `SESSION_SECRET` | 세션 쿠키 서명용 긴 랜덤 문자열 |
-| `TRUST_PROXY` | 리버스 프록시 뒤라면 프록시 홉 수 (예: `1`). 프록시 없이 켜면 IP 위조 가능 |
-| `NODE_ENV` | 배포 시 `production` (Secure 쿠키, HSTS) |
+## Firestore 컬렉션
 
-로컬 테스트용 개발 로그인: `ADMIN_EMAILS=you@example.com npm run dev` → 로그인 화면에 이메일 입력칸이 나옵니다 (`NODE_ENV=production`이면 비활성).
+| 컬렉션 | 내용 | 누가 쓰나 |
+|---|---|---|
+| `admins/{이메일}` | 관리자 목록 | **콘솔에서 직접 생성** (앱에서는 쓰기 불가) |
+| `visitors/{uid}` | 계정별 최근 IP·IP 이력·방문 수·브라우저 | 본인 (30초에 1회까지) |
+| `blocked/{uid}` | 차단된 계정 | 관리자 |
+| `blockedIps/{ip}` | 차단된 IP | 관리자 |
+| `events/{id}` | 보안 로그 (로그인, 실습 완료, 차단 시도, 관리자 조치) | 본인/관리자 |
 
-## 페이지
+## 차단 방식과 한계
 
-- `/login` — Google 로그인
-- `/lab` — 실습실 (로그인 필요). 모든 테스트는 브라우저 안 시뮬레이션
-  - **초급**: 강한 비밀번호 만들기 · 피싱 링크 구별 · 2단계 인증(MFA) 비교
-  - **중급**: 로그인 무차별 대입 방어 설계 · 세션 쿠키 속성 · 보안 헤더 점검
-  - **상급**: 침해 사고 로그 분석 · CSP 정책 작성 · 심층 방어 설계 · 시큐어 코드 리뷰
-  - 완료 기록은 브라우저에 저장되고, 관리자 보안 로그에 `lab.complete` 로 남음
-- `/admin` — 관리자 패널 (`ADMIN_EMAILS`만)
-  - 방문 IP / 계정 / 요청 수 / 최근 접속 / User-Agent
-  - IP 차단·해제 (자기 현재 IP는 차단 불가), 차단 사유 기록
-  - 보안 로그: 로그인, 차단된 접근, CSRF 거부, 관리자 접근 거부 등
+- **계정 차단**: Firestore 보안 규칙으로 강제됩니다. 차단된 계정은 어떤 데이터도 쓸 수 없고 실습실에 들어갈 수 없습니다.
+- **IP 차단**: 서버가 없어서 방문자의 공인 IP를 브라우저가 `api.ipify.org` 로 확인하고, 그 IP가 차단 목록에 있는지 브라우저에서 검사합니다. 일반 방문자는 막히지만 VPN이나 조작으로 우회할 수 있습니다. 확실히 막으려면 **계정 차단을 함께** 쓰세요.
 
-## 적용된 방어
+## 처음 한 번 설정
 
-- Google ID 토큰 서버 검증 (`aud`, 서명, `email_verified`)
-- 서명된 세션 쿠키 (`HttpOnly`, `SameSite=Lax`, 운영 시 `Secure`), 8시간 만료
-- 상태 변경 요청에 세션별 CSRF 토큰 헤더 필수
-- CSP, X-Frame-Options, nosniff, Referrer-Policy, Permissions-Policy, HSTS
-- IP별 요청 제한 (분당 300회), 로그인 시도 제한
-- 차단된 IP는 모든 요청에서 403
+1. [Firebase 콘솔](https://console.firebase.google.com)에서 Google Cloud 프로젝트 `secret-hack-515013` 을 Firebase 프로젝트로 추가합니다. 요금제는 **Spark 그대로** 둡니다.
+2. **Authentication → 시작하기 → 로그인 방법 → Google → 사용 설정 → 저장**
+3. **Firestore Database → 데이터베이스 만들기** → 위치 `asia-northeast3 (서울)` → 프로덕션 모드
+4. Firestore에서 컬렉션 `admins` 를 만들고, **문서 ID에 관리자 Gmail 주소**(소문자 그대로)를 넣습니다. 필드는 아무거나 하나 넣으면 됩니다 (예: `role` = `admin`).
+5. GitHub 자동 배포를 설정합니다.
+   1. Firebase 콘솔 **프로젝트 설정 → 서비스 계정 → 새 비공개 키 생성** 을 누르면 JSON 파일이 다운로드됩니다.
+   2. [Google Cloud IAM](https://console.cloud.google.com/iam-admin/iam) 에서 `firebase-adminsdk-…` 계정 연필 아이콘을 누르고, **Firebase Admin** 역할을 추가합니다.
+   3. GitHub 저장소 **Settings → Secrets and variables → Actions → New repository secret** 을 누릅니다. 이름은 `FIREBASE_SERVICE_ACCOUNT`, 값에는 JSON 파일 내용 전체를 붙여 넣습니다.
+   4. **Actions** 탭에서 `Deploy to Firebase` 를 실행합니다 (Run workflow). 이후에는 푸시할 때마다 자동으로 배포됩니다.
+6. 사이트 주소: `https://secret-hack-515013.web.app`
 
-## 데이터
-
-방문자·차단 목록·로그는 `data/store.json`에 저장됩니다. 관리자 IP가 바뀌어 잠겼다면 서버를 멈추고:
+## 로컬 테스트 (에뮬레이터)
 
 ```bash
-npm run unblock -- 203.0.113.7
+npm ci && npm run build
+npx firebase-tools emulators:start --project demo-secret-hack
 ```
+
+`http://localhost:5000/login?emu` 로 접속하면 가짜 이메일로 로그인할 수 있습니다. 에뮬레이터 연결은 localhost 에서 `?emu` 를 붙였을 때만 켜집니다.
