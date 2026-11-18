@@ -31,7 +31,7 @@ jobs:
       - name: Deploy hosting + Firestore rules
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
-        run: npx --yes firebase-tools@15.36.0 deploy --only hosting,firestore --project secret-hack-515013 --non-interactive
+        run: npx --yes firebase-tools@15.36.0 deploy --only hosting,firestore --project secret-hack-17a93 --non-interactive
       - name: Remove key
         if: always()
         run: shred -u "$RUNNER_TEMP/sa.json" 2>/dev/null || true

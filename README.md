@@ -34,7 +34,7 @@ firebase.json      Hosting 설정 + 보안 헤더(CSP 등)
 
 ## 처음 한 번 설정
 
-1. [Firebase 콘솔](https://console.firebase.google.com)에서 Google Cloud 프로젝트 `secret-hack-515013` 을 Firebase 프로젝트로 추가합니다. 요금제는 **Spark 그대로** 둡니다.
+1. [Firebase 콘솔](https://console.firebase.google.com)에서 Google Cloud 프로젝트 `secret-hack-17a93` 을 Firebase 프로젝트로 추가합니다. 요금제는 **Spark 그대로** 둡니다.
 2. **Authentication → 시작하기 → 로그인 방법 → Google → 사용 설정 → 저장**
 3. **Firestore Database → 데이터베이스 만들기** → 위치 `asia-northeast3 (서울)` → 프로덕션 모드
 4. Firestore에서 컬렉션 `admins` 를 만들고, **문서 ID에 관리자 Gmail 주소**(소문자 그대로)를 넣습니다. 필드는 아무거나 하나 넣으면 됩니다 (예: `role` = `admin`).
@@ -43,7 +43,7 @@ firebase.json      Hosting 설정 + 보안 헤더(CSP 등)
    2. [Google Cloud IAM](https://console.cloud.google.com/iam-admin/iam) 에서 `firebase-adminsdk-…` 계정 연필 아이콘을 누르고, **Firebase Admin** 역할을 추가합니다.
    3. GitHub 저장소 **Settings → Secrets and variables → Actions → New repository secret** 을 누릅니다. 이름은 `FIREBASE_SERVICE_ACCOUNT`, 값에는 JSON 파일 내용 전체를 붙여 넣습니다.
    4. **Actions** 탭에서 `Deploy to Firebase` 를 실행합니다 (Run workflow). 이후에는 푸시할 때마다 자동으로 배포됩니다.
-6. 사이트 주소: `https://secret-hack-515013.web.app`
+6. 사이트 주소: `https://secret-hack-17a93.web.app`
 
 ## 로컬 테스트 (에뮬레이터)
 
