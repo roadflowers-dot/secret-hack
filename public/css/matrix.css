@@ -213,3 +213,9 @@ input[type="range"] { padding: 0; accent-color: var(--g); }
 .kv dt { color: var(--g-mute); } .kv dd { margin: 0; color: #b9f5c4; word-break: break-word; }
 @media (prefers-reduced-motion: reduce) { .dot.on { animation: none; } }
 .termlog .amber { color: var(--amber); }
+/* ── brand logo ── */
+.brand { display: inline-flex; flex: 0 0 auto; line-height: 0; }
+.brand img { width: 44px; height: 44px; border-radius: 8px; border: 1px solid var(--line-2); box-shadow: 0 0 12px rgba(0,255,65,.35); }
+.brand:hover img { box-shadow: 0 0 18px rgba(0,255,65,.6); }
+.login-logo { width: 120px; height: 120px; border-radius: 14px; border: 1px solid var(--line-2); box-shadow: 0 0 24px rgba(0,255,65,.35); margin-bottom: 10px; }
+@media (max-width: 860px) { .brand img { width: 36px; height: 36px; } }
