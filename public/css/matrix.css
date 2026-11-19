@@ -212,3 +212,4 @@ input[type="range"] { padding: 0; accent-color: var(--g); }
 .kv { display: grid; grid-template-columns: 90px 1fr; gap: 4px 10px; font-size: 13px; }
 .kv dt { color: var(--g-mute); } .kv dd { margin: 0; color: #b9f5c4; word-break: break-word; }
 @media (prefers-reduced-motion: reduce) { .dot.on { animation: none; } }
+.termlog .amber { color: var(--amber); }

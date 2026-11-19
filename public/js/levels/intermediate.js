@@ -189,3 +189,109 @@ LAB.add({
     update();
   },
 });
+
+// ── I4. F12(개발자 도구) 막기의 진실 ──
+LAB.add({
+  id: 'i-devtools', level: 2,
+  title: 'F12(개발자 도구) 막기의 진실',
+  summary: '우클릭·F12 차단이 왜 보안이 아닌지 직접 뚫어 보고, 진짜 방어(서버 검증)로 쇼핑몰 공격을 막습니다.',
+  threat: '브라우저로 보낸 HTML·JS·데이터는 전부 사용자 컴퓨터에 있습니다. 공격자는 개발자 도구로 화면의 가격을 고치거나, 요청을 가로채 바꾸거나, 아예 브라우저 없이 API를 직접 호출합니다. 우클릭·F12 차단은 브라우저 메뉴, 주소창의 <code>view-source:</code>, 자바스크립트 끄기, 프록시 도구로 몇 초 만에 우회됩니다.',
+  defense: ['<b>클라이언트는 절대 믿지 않는다</b> — 가격·권한·수량은 서버가 다시 계산·검증', '모든 API에 <b>인증 + 권한 확인</b> (내 주문만 조회 가능)', '비밀값(관리자 쿠폰, API 키)은 <b>프론트엔드 코드에 넣지 않는다</b>', '이상 주문 탐지·로그', 'F12 차단·난독화는 "귀찮게 하는 정도" — 보안 수단으로 기대하지 말 것 (오히려 정상 사용자 불편)'],
+  render(el, { complete, h, term }) {
+    // ───── Part 1: live client-side blocking on this very page ─────
+    const box = h(`<div>
+      <h3 style="margin-top:0">① 직접 체험: 이 페이지에서 F12 막기</h3>
+      <p>아래를 켜면 <b>지금 이 페이지에서 실제로</b> 차단 코드가 동작합니다. 켠 다음 F12나 우클릭을 눌러 보고, 그다음 브라우저 메뉴 <b>⋮ → 도구 더보기 → 개발자 도구</b>로 열어 보세요.</p>
+      <div class="row">
+        <label class="pick"><input type="checkbox" id="b-ctx"> 우클릭 차단</label>
+        <label class="pick"><input type="checkbox" id="b-key"> F12 · Ctrl+Shift+I/J/C · Ctrl+U 차단</label>
+        <label class="pick"><input type="checkbox" id="b-sel"> 텍스트 선택·복사 차단</label>
+      </div>
+      <div class="out" id="livelog">차단 코드 꺼짐</div>
+      <p class="muted" style="font-size:13px">결과: 키보드 단축키와 우클릭은 막혀도 <b>브라우저 메뉴로 여는 개발자 도구</b>, 주소창의 <code>view-source:</code>, 휴대폰·다른 브라우저, 자바스크립트 끄기는 페이지가 막을 수 없습니다. 이 사이트 자체도 F12를 막지 않습니다. 대신 Firestore 보안 규칙(서버 측)으로 데이터를 지킵니다.</p>
+
+      <h3>② 시뮬레이션: MATRIX STORE 주문 공격 막기</h3>
+      <div class="card" style="margin-bottom:10px">
+        <b>상품:</b> 레드필 한정판 키보드 · <span class="cyan">₩50,000</span> · 재고 3개 · 관리자 전용 100% 할인 쿠폰 존재
+      </div>
+      <div class="two">
+        <div class="card"><h4>🖥 클라이언트(브라우저) 측</h4>
+          <label class="pick" style="display:flex"><input type="checkbox" data-d="c-ctx"> 우클릭 차단</label>
+          <label class="pick" style="display:flex"><input type="checkbox" data-d="c-key"> F12 단축키 차단</label>
+          <label class="pick" style="display:flex"><input type="checkbox" data-d="c-detect"> 개발자 도구 감지 시 페이지 닫기</label>
+          <label class="pick" style="display:flex"><input type="checkbox" data-d="c-obf"> 자바스크립트 난독화</label>
+        </div>
+        <div class="card"><h4>🗄 서버 측</h4>
+          <label class="pick" style="display:flex"><input type="checkbox" data-d="s-price"> 주문 금액을 DB 가격으로 다시 계산</label>
+          <label class="pick" style="display:flex"><input type="checkbox" data-d="s-input"> 수량·쿠폰을 서버에서 검증 (쿠폰은 서버에만 보관)</label>
+          <label class="pick" style="display:flex"><input type="checkbox" data-d="s-authz"> API마다 로그인·소유자 확인</label>
+          <label class="pick" style="display:flex"><input type="checkbox" data-d="s-log"> 이상 주문 탐지·로그</label>
+        </div>
+      </div>
+      <button id="run" style="margin-top:12px">▶ 공격 5종 시뮬레이션</button>
+      <div class="out termlog" id="log" style="max-height:420px"></div>
+      <h3>목표</h3><p class="muted">5가지 공격을 모두 막으세요. 그리고 클라이언트 측 차단이 실제로 몇 개를 막았는지 확인해 보세요.</p>
+    </div>`);
+    el.appendChild(box);
+    const $ = (s) => box.querySelector(s);
+
+    // live demo listeners, removed automatically when the user leaves this module
+    let blocked = 0;
+    const ac = new AbortController();
+    const alive = () => { if (!document.body.contains(box) || box.closest('[hidden]')) { ac.abort(); return false; } return true; };
+    const note = (what) => {
+      blocked++;
+      $('#livelog').className = 'out bad';
+      $('#livelog').textContent = `🚫 ${what} 차단됨 (${blocked}회)\n→ 이제 브라우저 메뉴 ⋮ → 도구 더보기 → 개발자 도구로 열어 보세요. 막을 수 없습니다.`;
+    };
+    document.addEventListener('contextmenu', (e) => { if (alive() && $('#b-ctx').checked) { e.preventDefault(); note('우클릭'); } }, { signal: ac.signal });
+    document.addEventListener('keydown', (e) => {
+      if (!alive() || !$('#b-key').checked) return;
+      const k = e.key.toUpperCase();
+      const combo = e.key === 'F12' || ((e.ctrlKey || e.metaKey) && e.shiftKey && ['I', 'J', 'C'].includes(k)) || ((e.ctrlKey || e.metaKey) && k === 'U');
+      if (combo) { e.preventDefault(); e.stopPropagation(); note(e.key === 'F12' ? 'F12' : `${e.ctrlKey ? 'Ctrl' : 'Cmd'}+${e.shiftKey ? 'Shift+' : ''}${k}`); }
+    }, { signal: ac.signal, capture: true });
+    ['copy', 'selectstart'].forEach((ev) => document.addEventListener(ev, (e) => {
+      if (alive() && $('#b-sel').checked && !e.target.closest?.('input,textarea')) { e.preventDefault(); if (ev === 'copy') note('복사'); }
+    }, { signal: ac.signal }));
+    box.querySelectorAll('#b-ctx,#b-key,#b-sel').forEach((c) => c.addEventListener('change', () => {
+      const on = ['b-ctx', 'b-key', 'b-sel'].filter((id) => $('#' + id).checked).length;
+      $('#livelog').className = 'out' + (on ? ' ok' : '');
+      $('#livelog').textContent = on ? `차단 코드 ${on}개 동작 중 — F12나 우클릭을 눌러 보세요.` : '차단 코드 꺼짐';
+    }));
+
+    // simulation
+    const ATTACKS = [
+      { name: '개발자 도구로 화면의 가격을 ₩1로 바꾸고 주문', via: '브라우저 메뉴로 개발자 도구 열기 (F12 차단 무시), 감지 스크립트는 개발자 도구에서 일시정지', need: 's-price', ok: '서버가 DB 가격 ₩50,000으로 다시 계산 → 결제 금액 불일치로 주문 거부', bad: '서버가 브라우저가 보낸 금액 ₩1을 그대로 믿고 결제 승인' },
+      { name: '프록시 도구로 주문 요청을 가로채 금액 변경', via: '브라우저 밖에서 요청 수정 — 페이지의 어떤 차단 코드도 실행되지 않음', need: 's-price', ok: '서버 재계산으로 거부', bad: '변조된 금액으로 주문 성공' },
+      { name: 'API를 직접 호출해 수량 -5개 주문', via: '브라우저 없이 명령줄로 요청 — 클라이언트 코드 자체가 없음', need: 's-input', ok: '서버가 수량 범위(1~재고) 검증 → 거부', bad: '음수 수량으로 금액이 마이너스 → 포인트 환급' },
+      { name: 'JS 소스에서 관리자 쿠폰 코드 찾아 사용', via: '주소창 view-source: 또는 다운로드한 JS 파일 검색 — 난독화해도 문자열은 남음', need: 's-input', ok: '쿠폰은 서버에만 있고 서버가 사용자 권한 확인 → 거부', bad: '100% 할인 쿠폰으로 무료 구매' },
+      { name: '주문 번호를 바꿔 남의 주문(주소·전화번호) 조회', via: 'API 주소의 주문 번호만 1씩 바꿔 요청', need: 's-authz', ok: '서버가 "이 주문의 주인인가" 확인 → 403', bad: '다른 고객 개인정보 대량 유출' },
+    ];
+    let busy = false;
+    $('#run').addEventListener('click', async () => {
+      if (busy) return; busy = true;
+      const on = new Set([...box.querySelectorAll('[data-d]:checked')].map((x) => x.dataset.d));
+      const clientOn = [...on].filter((x) => x.startsWith('c-'));
+      const t = term($('#log'));
+      t.clear();
+      let stopped = 0;
+      for (const [i, a] of ATTACKS.entries()) {
+        await t.line(`── 공격 ${i + 1}: ${a.name}`, '', 120);
+        if (clientOn.length) await t.line(`   클라이언트 차단 ${clientOn.length}개 → 우회: ${a.via}`, 'amber', 120);
+        else await t.line(`   방법: ${a.via}`, '', 120);
+        if (on.has(a.need)) { stopped++; await t.line(`   ✔ ${a.ok}`, 'ok', 160); }
+        else await t.line(`   ✗ ${a.bad}`, 'red', 160);
+        if (on.has('s-log') && !on.has(a.need)) await t.line('   (이상 주문 로그로 사후 탐지는 됨 — 피해는 이미 발생)', 'cyan', 100);
+      }
+      await t.line('', '', 0);
+      await t.line(`RESULT: ${stopped}/5 방어`, stopped === 5 ? 'ok' : 'red', 0);
+      await t.line(`클라이언트 측 차단이 단독으로 막은 공격: 0개${clientOn.length ? ` (켜 둔 ${clientOn.length}개 모두 우회됨)` : ''}`, 'amber', 0);
+      if (stopped === 5) {
+        await t.line(clientOn.length ? '✔ 통과 — 하지만 클라이언트 차단 없이도 결과는 같습니다. 꺼 보고 다시 실행해 보세요.' : '✔ 통과 — 클라이언트 차단 없이 서버 검증만으로 전부 막았습니다. 이것이 정답입니다.', 'ok', 0);
+        complete(clientOn.length ? 90 : 100);
+      }
+      busy = false;
+    });
+  },
+});
