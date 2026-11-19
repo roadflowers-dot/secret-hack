@@ -43,7 +43,7 @@ firebase.json      Hosting 설정 + 보안 헤더(CSP 등)
    2. [Google Cloud IAM](https://console.cloud.google.com/iam-admin/iam) 에서 `firebase-adminsdk-…` 계정 연필 아이콘을 누르고, **Firebase Admin** 역할을 추가합니다.
    3. GitHub 저장소 **Settings → Secrets and variables → Actions → New repository secret** 을 누릅니다. 이름은 `FIREBASE_SERVICE_ACCOUNT`, 값에는 JSON 파일 내용 전체를 붙여 넣습니다.
    4. **Actions** 탭에서 `Deploy to Firebase` 를 실행합니다 (Run workflow). 이후에는 푸시할 때마다 자동으로 배포됩니다.
-6. 사이트 주소: `https://secret-hack-17a93.web.app`
+6. 사이트 주소: `https://causchoolhack.web.app`
 
 ## 로컬 테스트 (에뮬레이터)
 
